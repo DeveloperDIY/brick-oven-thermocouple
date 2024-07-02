@@ -1,0 +1,141 @@
+esphome:
+  name: oven-s3
+  friendly_name: LVGL Test
+
+esp32:
+  board: esp32-s3-devkitc-1
+
+logger:
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  domain: !secret wifi_domain
+
+external_components:
+ - source: github://clydebarrow/esphome@lvgl
+   components: [ lvgl ] 
+
+spi:
+  mosi_pin: GPIO11
+  miso_pin: GPIO13
+  clk_pin: GPIO12
+
+sensor:
+  - platform: max6675
+    name: "Oven Temperature"
+    id: "temperature"
+    cs_pin: GPIO18
+    update_interval: 10s
+    unit_of_measurement: "°C"
+    accuracy_decimals: 0
+    device_class: "temperature"
+    state_class: "measurement"
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: temperature_value
+            text:
+              format: "%.0f°C"
+              args:
+                - id(temperature).state
+        - lvgl.indicator.update:
+            id: temperature_needle
+            value: !lambda return id(temperature).state;
+
+display:
+  - platform: ili9xxx
+    id: lcd_display
+    model: GC9A01A
+    dimensions:
+      height: 240
+      width: 240
+    data_rate: 40MHz
+    cs_pin: GPIO10
+    dc_pin: GPIO9
+    reset_pin: GPIO14
+    update_interval: never
+    auto_clear_enabled: false
+
+font:
+  - file: "gfonts://Roboto"
+    id: roboto_38
+    size: 38
+    bpp: 4
+
+lvgl:
+  log_level: INFO
+  color_depth: 16
+  bg_color: 0x000000
+  align: center
+
+  widgets:
+    - meter:
+        height: 240
+        width: 240
+        align: center
+        text_font: montserrat_14
+        bg_opa: TRANSP
+        text_color: 0x999999
+        border_width: 0
+        pad_all: 8
+
+        scales:
+          - ticks:
+              width: 2
+              count: 26
+              length: 10
+              color: 0x999999
+              major:
+                stride: 5
+                width: 4
+                length: 15
+                color: 0xEEEEEE
+                label_gap: 16
+            range_from: 0
+            range_to: 500
+            angle_range: 270
+            rotation: 135
+            indicators:
+              - line:
+                  id: temperature_needle
+                  width: 4
+                  color: 0x999999
+                  r_mod: -10
+              - arc:
+                  color: 0x2196F3
+                  width: 3
+                  start_value: 0
+                  end_value: 100
+              - tick_style:
+                  start_value: 0
+                  end_value: 100
+                  color_start: 0x2196F3
+                  color_end: 0x2196F3
+                  width: 0
+                  local: true
+              - arc:
+                  color: 0xF44336
+                  width: 3
+                  start_value: 400
+                  end_value: 500
+              - tick_style:
+                  start_value: 400
+                  end_value: 500
+                  color_start: 0xF44336
+                  color_end: 0xF44336
+                  width: 0
+                  local: true
+
+    - label:
+        id: temperature_value
+        text_font: roboto_38
+        align: center
+        text_color: 0x336699
+        bg_opa: TRANSP
+        y: +90
+        text: "---°C"
